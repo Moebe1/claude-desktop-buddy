@@ -1,31 +1,21 @@
-# claude-desktop-buddy
+# claude-desktop-buddy (M5StickC port)
 
-Claude for macOS and Windows can connect Claude Cowork and Claude Code to
-maker devices over BLE, so developers and makers can build hardware that
-displays permission prompts, recent messages, and other interactions. We've
-been impressed by the creativity of the maker community around Claude -
-providing a lightweight, opt-in API is our way of making it easier to build
-fun little hardware devices that integrate with Claude.
+Fork of [anthropics/claude-desktop-buddy](https://github.com/anthropics/claude-desktop-buddy)
+retuned for the **original M5StickC** (80×160 screen, no built-in buzzer)
+instead of the Plus. The BLE protocol is unchanged — see [REFERENCE.md](REFERENCE.md).
+
+The firmware runs landscape (160×80): buddy in the left half, clock /
+transcript / approval prompts in the right half or full-screen as needed.
 
 > **Building your own device?** You don't need any of the code here. See
 > **[REFERENCE.md](REFERENCE.md)** for the wire protocol: Nordic UART
 > Service UUIDs, JSON schemas, and the folder push transport.
 
-As an example, we built a desk pet on ESP32 that lives off permission
-approvals and interaction with Claude. It sleeps when nothing's happening,
-wakes when sessions start, gets visibly impatient when an approval prompt is
-waiting, and lets you approve or deny right from the device.
-
-<p align="center">
-  <img src="docs/device.jpg" alt="M5StickC Plus running the buddy firmware" width="500">
-</p>
-
 ## Hardware
 
-The firmware targets ESP32 with the Arduino framework. As written, it
-depends on the M5StickCPlus library for its display, IMU, and button
-drivers—so you'll need that board, or a fork that swaps those drivers for
-your own pin layout.
+ESP32 + Arduino framework, depends on the `m5stack/M5StickC` library
+(see `platformio.ini`). For the original Plus reference firmware,
+see the upstream repo.
 
 ## Flashing
 
@@ -94,7 +84,9 @@ character pack folder onto the drop target in the Hardware Buddy window. The
 app streams it over BLE and the stick switches to GIF mode live. **Settings
 → delete char** reverts to ASCII mode.
 
-A character pack is a folder with `manifest.json` and 96px-wide GIFs:
+A character pack is a folder with `manifest.json` and 64px-wide GIFs (this
+port uses 64 to fit the left half of the 160×80 landscape canvas; upstream
+uses 96):
 
 ```json
 {
@@ -122,11 +114,11 @@ State values can be a single filename or an array. Arrays rotate: each
 loop-end advances to the next GIF, useful for an idle activity carousel so
 the home screen doesn't loop one clip forever.
 
-GIFs are 96px wide; height up to ~140px stays on a 135×240 portrait screen.
-Crop tight to the character — transparent margins waste screen and shrink
-the sprite. `tools/prep_character.py` handles the resize: feed it source
-GIFs at any sizes and it produces a 96px-wide set where the character is the
-same scale in every state.
+GIFs are 64px wide; height up to ~80px fits the 80px-tall landscape canvas
+without clipping. Crop tight to the character — transparent margins waste
+screen and shrink the sprite. `tools/prep_character.py` handles the resize:
+feed it source GIFs at any sizes and it produces a 64px-wide set where the
+character is the same scale in every state.
 
 The whole folder must fit under 1.8MB —
 `gifsicle --lossy=80 -O3 --colors 64` typically cuts 40–60%.
