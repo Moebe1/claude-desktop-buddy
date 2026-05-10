@@ -846,7 +846,12 @@ void drawHUD() {
   spr.fillRect(0, H - AREA, W, AREA, p.bg);
   spr.setTextSize(1);
 
-  if (tama.lineGen != lastLineGen) { msgScroll = 0; lastLineGen = tama.lineGen; wake(); }
+  // Don't wake() on transcript updates — Claude's keepalive every 10s would
+  // otherwise hold the screen on indefinitely. README's documented behavior
+  // is "auto-off after 30s of no interaction (kept on while an approval
+  // prompt is up)"; approval-arrival wake is handled separately at the
+  // promptId-change site. Big battery saver on the M5StickC's 95mAh cell.
+  if (tama.lineGen != lastLineGen) { msgScroll = 0; lastLineGen = tama.lineGen; }
 
   if (tama.nLines == 0) {
     spr.setTextColor(p.text, p.bg);
@@ -1132,7 +1137,12 @@ void loop() {
     if (buddyMode) buddyInvalidate();
     wasClocking = clocking;
   }
-  if (clocking) {
+  // Clocking overrides activeState every iteration based on time-of-day —
+  // gate it the same way the baseState assignment is gated (line ~964) so
+  // shake→dizzy and other one-shots aren't wiped on the very next loop.
+  // (Same bug exists upstream; surfaces here because most testing happens
+  // on USB power, which is exactly when clocking is active.)
+  if (clocking && (int32_t)(now - oneShotUntil) >= 0) {
     uint8_t dow = clockDow();
     bool weekend = (dow == 0 || dow == 6);
     bool friday  = (dow == 5);
@@ -1214,11 +1224,13 @@ void loop() {
     napStartMs = now;
     M5.Axp.ScreenBreath(8);
     dimmed = true;
+    Serial.println("nap: start");
   } else if (napping && faceDownFrames <= -8) {
     napping = false;
     statsOnNapEnd((now - napStartMs) / 1000);
     statsOnWake();
     wake();
+    Serial.println("nap: end");
   }
 
   // millis() not the cached `now`: wake() runs after `now` is captured,
