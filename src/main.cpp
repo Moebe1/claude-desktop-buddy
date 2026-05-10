@@ -112,6 +112,7 @@ static void applyBrightness() { M5.Axp.ScreenBreath(8 + brightLevel); }   // 8..
 static void wake() {
   lastInteractMs = millis();
   if (screenOff) {
+    Serial.println("[wake] turning LDO2 back on");
     M5.Axp.SetLDO2(true);
     applyBrightness();
     screenOff = false;
@@ -999,6 +1000,8 @@ void loop() {
   // BtnA-to-wake to also cycle displayMode or open the menu.
   if (M5.BtnA.isPressed() || M5.BtnB.isPressed()) {
     if (screenOff) {
+      Serial.printf("[wake] btn from screenOff: A=%d B=%d napping=%d _onUsb=%d\n",
+                    M5.BtnA.isPressed(), M5.BtnB.isPressed(), napping, _onUsb);
       if (M5.BtnA.isPressed()) swallowBtnA = true;
       if (M5.BtnB.isPressed()) swallowBtnB = true;
     }
@@ -1238,6 +1241,7 @@ void loop() {
   // No auto-off on USB power — clock face wants to stay visible while charging.
   if (!screenOff && !inPrompt && !_onUsb
       && millis() - lastInteractMs > SCREEN_OFF_MS) {
+    Serial.println("[wake] screen off, LDO2 false");
     M5.Axp.SetLDO2(false);
     screenOff = true;
   }
