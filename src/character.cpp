@@ -1,5 +1,5 @@
 #include "character.h"
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <LittleFS.h>
 #include <AnimatedGIF.h>
 #include <ArduinoJson.h>
@@ -37,21 +37,30 @@ static uint8_t curState = 0xFF;
 static AnimatedGIF gif;
 static File        gifFile;
 static int         gifX = 0, gifY = 0, gifW = 0, gifH = 0;
-// Peek mode pins the GIF bottom to the info-panel top (y=70) so the pet
-// sits on the panel edge regardless of canvas height. Home mode centers
-// in the upper 140px. No padding assumed in the source art.
+// On the original M5StickC's 160×80 landscape canvas, the buddy claims the
+// LEFT half (x≈0..78) so the right half is free for clock / HUD / status.
+// gifY centers in the full sprite height — the bottom of tall GIFs may dip
+// behind the HUD's transcript band when sessions are active, which is
+// acceptable since clock and HUD are mutually exclusive.
+static const int   BUDDY_HALF_W = 78;
+// Peek mode is force-disabled on this port (see characterSetPeek). PEEK_TOP
+// is kept only because the now-dead peek branch in gifDrawCb still references
+// it; the branch can never fire because peekMode is always false.
 static const int   PEEK_TOP = 70;
 static bool        peekMode = false;
 // Draw target — defaults to the sprite; characterRenderTo() retargets to
 // M5.Lcd for the landscape clock (both inherit TFT_eSPI).
 static TFT_eSPI*   _tgt = &spr;
-// Peek mode renders at half scale (2:1 nearest-neighbor in gifDrawCb) so
-// the whole pet fits the 70px window instead of cropping the top.
 static void gifPlace() {
-  int outW = peekMode ? gifW / 2 : gifW;
-  int outH = peekMode ? gifH / 2 : gifH;
-  gifX = (spr.width() - outW) / 2;
-  gifY = peekMode ? (PEEK_TOP - outH) / 2 : (140 - outH) / 2;
+  // peekMode is set by applyDisplayMode but not exercised on this port —
+  // the buddy is hidden entirely while INFO/PET overlays show. Same math
+  // either way: center in the left half.
+  int outW = gifW;
+  int outH = gifH;
+  gifX = (BUDDY_HALF_W - outW) / 2;
+  if (gifX < 0) gifX = 0;
+  gifY = (spr.height() - outH) / 2;
+  if (gifY < 0) gifY = 0;
 }
 static uint32_t    nextFrameAt = 0;
 static uint32_t    animPauseUntil = 0;
@@ -265,9 +274,13 @@ void characterRenderTo(TFT_eSPI* tgt, int cx, int cy) {
   _tgt = prevT; peekMode = prevP; gifX = px; gifY = py;
 }
 
-void characterSetPeek(bool peek) {
-  if (peekMode == peek) return;
-  peekMode = peek;
+void characterSetPeek(bool /*peek*/) {
+  // The 80px-tall canvas leaves no room for a half-scale "peek" overlay
+  // alongside other content; the buddy is hidden entirely while INFO/PET
+  // pages show. Keep peekMode = false so gifPlace doesn't try to compute
+  // a peek layout that this port doesn't render.
+  if (!peekMode) return;
+  peekMode = false;
   characterInvalidate();
 }
 

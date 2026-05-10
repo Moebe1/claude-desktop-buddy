@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Prep a character pack: downscale GIFs to 96px with a CONSISTENT crop
+Prep a character pack: downscale GIFs to TARGET_W px with a CONSISTENT crop
 across all states, so the character is the same size in every animation.
 Writes to characters/<name>/ ready to drag onto the Hardware Buddy window.
 
@@ -11,7 +11,10 @@ import json, sys, shutil, tempfile, zipfile
 from pathlib import Path
 from PIL import Image, ImageSequence
 
-TARGET_W = 96
+# 64 px = half of the 160-wide M5StickC landscape canvas, leaving the right
+# half for transcript / status overlays. (The Plus port used 96 on its
+# 135-wide portrait canvas.)
+TARGET_W = 64
 REF_W    = 1000   # normalize to this before computing the cross-state bbox
 PROJECT  = Path(__file__).resolve().parent.parent
 OUT_ROOT = PROJECT / "characters"

@@ -1,6 +1,6 @@
 #include "buddy.h"
 #include "buddy_common.h"
-#include <M5StickCPlus.h>
+#include <M5StickC.h>
 #include <string.h>
 
 extern TFT_eSprite spr;
@@ -9,10 +9,12 @@ extern TFT_eSprite spr;
 enum { B_SLEEP, B_IDLE, B_BUSY, B_ATTENTION, B_CELEBRATE, B_DIZZY, B_HEART };
 
 // ──────────────── shared geometry ────────────────
-const int BUDDY_X_CENTER = 67;
-const int BUDDY_CANVAS_W = 135;
-const int BUDDY_Y_BASE   = 30;
-const int BUDDY_Y_OVERLAY = 6;
+// Original M5StickC, landscape 160×80. Buddy lives in the left half of the
+// screen (~80px wide), info/menu overlays paint over or beside it.
+const int BUDDY_X_CENTER = 40;
+const int BUDDY_CANVAS_W = 80;
+const int BUDDY_Y_BASE   = 12;
+const int BUDDY_Y_OVERLAY = 2;
 const int BUDDY_CHAR_W   = 6;
 const int BUDDY_CHAR_H   = 8;
 
@@ -146,10 +148,11 @@ static uint8_t lastDrawnState = 0xFF;
 static uint8_t lastDrawnSpecies = 0xFF;
 void buddyInvalidate() { lastDrawnState = 0xFF; }
 
-void buddySetPeek(bool peek) {
-  uint8_t s = peek ? 1 : 2;
-  if (s == _scale) return;
-  _scale = s;
+void buddySetPeek(bool /*peek*/) {
+  // Original M5StickC has only 80px vertical room; scale-2 buddy doesn't fit.
+  // Force scale 1 always; peek/non-peek both render the same size on this port.
+  if (_scale == 1) return;
+  _scale = 1;
   buddyInvalidate();
 }
 
@@ -187,8 +190,10 @@ void buddyTick(uint8_t personaState) {
   lastDrawnState = personaState;
   lastDrawnSpecies = currentSpeciesIdx;
 
-  // Clear the whole render strip — at 2× the body reaches y≈126, at 1× ≈82.
-  spr.fillRect(0, 0, BUDDY_CANVAS_W,
+  // Clear the full sprite-width top strip. BUDDY_CANVAS_W (80 on this port)
+  // bounds the art, but the right half holds leftover splash/HUD pixels that
+  // need wiping each tick.
+  spr.fillRect(0, 0, spr.width(),
                (BUDDY_Y_BASE + 5 * BUDDY_CHAR_H + 12) * _scale, BUDDY_BG);
 
   const Species* sp = SPECIES_TABLE[currentSpeciesIdx];
